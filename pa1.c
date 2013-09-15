@@ -4,26 +4,58 @@
 #include <string.h>
 #include <stdbool.h>
 #include <time.h>
+#include <math.h>
 #include <stdlib.h>
 #include <getopt.h>
 
-#define MTXTYPEFLOAT
 #include "matrix.h"
-
-const mtxfp G = 0.0001;
 
 struct particle {
 	struct matrix *pos;
+	struct matrix *velocity;
 	mtxfp mass;
 };
 
 struct particle *initParticles(int pnum);
+void saveParticles(struct particle *parts, int pnum, const char *fname);
 
 int runSim(int pnum, int maxstep, mtxfp timestep, mtxfp gravity)
 {
 	printf("Running with pnum: %d, maxstep: %d, timestep: %f, gravity: %f\n",
 				 pnum, maxstep, timestep, gravity);
 	struct particle *particles = initParticles(pnum);
+	
+	saveParticles(particles, pnum, "Startup.csv");
+	mtxfp time = 0;
+	for(int s = 0; s < maxstep; s++) {
+		for(int i = 0; i < pnum; i++) {
+			struct matrix *force = mtxCreate(1, 3);
+			for(int j = 0; j < pnum; j++) {
+				if(i == j)
+					continue;
+				struct matrix *disp = mtxSub(particles[i].pos, particles[j].pos);
+				mtxfp xdisp = mtxGet(disp, 0, 0),
+					ydisp = mtxGet(disp, 0, 1),
+					zdisp = mtxGet(disp, 0, 2),
+					dist = sqrt(xdisp * xdisp + ydisp * ydisp + zdisp * zdisp);
+				struct matrix *fij = mtxScalarMul(disp, -gravity * particles[i].mass *
+																					particles[j].mass / dist / dist / dist),
+					*newforce = mtxAdd(force, fij);
+				mtxFree(disp);
+				mtxFree(fij);
+				mtxFree(force);
+				force = newforce;
+			}
+			struct matrix *dvdt = mtxScalarMul(force, timestep / particles[i].mass),
+				*newvel = mtxAdd(particles[i].velocity, dvdt);
+			mtxFree(force);
+			mtxFree(dvdt);
+			mtxFree(particles[i].velocity);
+			particles[i].velocity = newvel;
+		}
+		time += timestep;
+	}
+	saveParticles(particles, pnum, "Finish.csv");
 	
 	for(int i = 0; i < pnum; i++)
 		mtxFree(particles[i].pos);
@@ -37,29 +69,38 @@ struct particle *initParticles(int pnum)
 	assert(particles);
 	for(int i = 0; i < pnum; i++) {
 		particles[i].pos = mtxCreate(1, 3);
-		mtxSet(particles[i].pos, 0, 0, ((mtxfp)rand()) / RAND_MAX);
-		mtxSet(particles[i].pos, 0, 1, ((mtxfp)rand()) / RAND_MAX);
-		mtxSet(particles[i].pos, 0, 2, ((mtxfp)rand()) / RAND_MAX);
+		particles[i].velocity = mtxCreate(1, 3);
+		mtxSet(particles[i].pos, 0, 0, ((mtxfp)rand() - 1) / RAND_MAX);
+		mtxSet(particles[i].pos, 0, 1, ((mtxfp)rand() - 1) / RAND_MAX);
+		mtxSet(particles[i].pos, 0, 2, ((mtxfp)rand() - 1) / RAND_MAX);
+		mtxSet(particles[i].velocity, 0, 0, ((mtxfp)rand() - 1) / RAND_MAX);
+		mtxSet(particles[i].velocity, 0, 1, ((mtxfp)rand() - 1) / RAND_MAX);
+		mtxSet(particles[i].velocity, 0, 2, ((mtxfp)rand() - 1) / RAND_MAX);
     particles[i].mass = ((mtxfp)rand()) / RAND_MAX;
 	}
 	return particles;
 }
 
+void saveParticles(struct particle *parts, int pnum, const char *fname)
+{
+	FILE *file = fopen(fname, "w");
+	for(int i = 0; i < pnum; i++) {
+		fprintf(file, "%4d, %10.9f "
+						"%10.9f, %10.9f, %10.9f, "
+						"%10.9f, %10.9f, %10.9f\n",
+						i, parts[i].mass,
+						mtxGet(parts[i].pos, 0, 0),
+						mtxGet(parts[i].pos, 0, 1),
+						mtxGet(parts[i].pos, 0, 2),
+						mtxGet(parts[i].velocity, 0, 0),
+						mtxGet(parts[i].velocity, 0, 1),
+						mtxGet(parts[i].velocity, 0, 2));
+	}
+	fclose(file);
+}
+
 int main(int argc, char **argv)
 {
-	struct matrix *mtx = mtxCreate(2, 3);
-	mtxSet(mtx, 0, 0, (double)1.0);
-	mtxSet(mtx, 0, 1, (double)10.0);
-	mtxSet(mtx, 0, 2, (double)100.0);
-	mtxSet(mtx, 1, 0, (double)5.0);
-	mtxSet(mtx, 1, 1, (double)25.0);
-	mtxSet(mtx, 1, 2, (double)125.0);
-	mtxTranspose(mtx);
-	mtxTranspose(mtx);
-	mtxFree(mtx);
-	float a, *b;
-	b = &a;
-	*b = 65.0;
 	/* Default Values */
 	int pnum = 1000, maxstep = 4;
 	mtxfp ts = 0.0001, gravity = 0.0000000000667384;

@@ -152,7 +152,6 @@ void mtxTranspose(struct matrix *mtx)
 		mtx->width = mtx->height;
 		mtx->height = tmp;
 	}
-	mtxPrint(mtx);
 }
 
 struct matrix *mtxAdd(struct matrix *lhs, struct matrix *rhs)
@@ -163,8 +162,8 @@ struct matrix *mtxAdd(struct matrix *lhs, struct matrix *rhs)
 		return NULL;
 	}
 	struct matrix *mtx = mtxCreate(lhs->width, lhs->height);
-	unsigned i, x, y;
-	for(i = 0; i < (lhs->width * lhs->height); i++) {
+	unsigned x = 0, y = 0;
+	for(unsigned i = 0; i < (lhs->width * lhs->height); i++) {
 		if(x == lhs->width) {
 			x = 0;
 			y++;
@@ -172,7 +171,6 @@ struct matrix *mtxAdd(struct matrix *lhs, struct matrix *rhs)
 		*mtx->matrixPos(mtx, x, y) = *lhs->matrixPos(lhs, x, y) + *rhs->matrixPos(rhs, x, y);
 	}
 	return mtx;
-	mtxPrint(mtx);
 }
 
 struct matrix *mtxSub(struct matrix *lhs, struct matrix *rhs)
@@ -183,8 +181,8 @@ struct matrix *mtxSub(struct matrix *lhs, struct matrix *rhs)
 		return NULL;
 	}
 	struct matrix *mtx = mtxCreate(lhs->width, lhs->height);
-	unsigned i, x, y;
-	for(i = 0; i < (lhs->width * lhs->height); i++) {
+	unsigned x = 0, y = 0;
+	for(unsigned i = 0; i < (lhs->width * lhs->height); i++) {
 		if(x == lhs->width) {
 			x = 0;
 			y++;
@@ -192,7 +190,6 @@ struct matrix *mtxSub(struct matrix *lhs, struct matrix *rhs)
 		*mtx->matrixPos(mtx, x, y) = *lhs->matrixPos(lhs, x, y) -
 			*rhs->matrixPos(rhs, x, y);
 	}
-	mtxPrint(mtx);
 	return mtx;
 }
 
@@ -200,10 +197,8 @@ struct matrix *mtxNeg(struct matrix *mtx)
 {
 	assert(mtx);
 	struct matrix *ret = mtxCreate(mtx->width, mtx->height);
-	unsigned i;
-	for(i = 0; i < (mtx->width * mtx->height); i++)
+	for(unsigned i = 0; i < (mtx->width * mtx->height); i++)
 		ret->mtx[i] = -mtx->mtx[i];
-	mtxPrint(mtx);
 	return ret;
 }
 
@@ -226,8 +221,16 @@ struct matrix *mtxMul(struct matrix *lhs, struct matrix *rhs)
 				*rhs->matrixPos(rhs, x, xypos);
 		}
 	}
-	mtxPrint(mtx);
 	return mtx;
+}
+
+struct matrix *mtxScalarMul(struct matrix *mtx, mtxfp scalar)
+{
+	assert(mtx);
+	struct matrix *ret = mtxCreate(mtx->width, mtx->height);
+	for(unsigned i = 0; i < (mtx->width * mtx->height); i++)
+		ret->mtx[i] = mtx->mtx[i] * scalar;
+	return ret;
 }
 
 mtxfp mtxDeterminant(struct matrix *mtx)
@@ -284,6 +287,12 @@ int mtxSet(struct matrix *mtx, unsigned x, unsigned y, mtxfp val)
 	}
 	*mtx->matrixPos(mtx, x, y) = val;
 	return 0;
+}
+
+void mtxClear(struct matrix *mtx)
+{
+	for(int i = 0; i < mtx->width * mtx->height; i++)
+		mtx->mtx[i] = 0;
 }
 
 struct matrix *mtxRotation(mtxfp theta, mtxfp x, mtxfp y, mtxfp z)
