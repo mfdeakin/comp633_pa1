@@ -6,6 +6,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdlib.h>
+#include <sys/time.h>
 #include <getopt.h>
 
 #include "matrix.h"
@@ -27,7 +28,11 @@ int runSim(int pnum, int maxstep, mtxfp timestep, mtxfp gravity)
 	
 	saveParticles(particles, pnum, "Startup.csv");
 	mtxfp time = 0;
+	struct timeval tv1, tv2, elapsed;
+	gettimeofday(&tv1, NULL);
+	//Leak not in this loop
 	for(int s = 0; s < maxstep; s++) {
+		printf("Step %d\n", s);
 		for(int i = 0; i < pnum; i++) {
 			struct matrix *force = mtxCreate(1, 3);
 			for(int j = 0; j < pnum; j++) {
@@ -47,18 +52,28 @@ int runSim(int pnum, int maxstep, mtxfp timestep, mtxfp gravity)
 				force = newforce;
 			}
 			struct matrix *dvdt = mtxScalarMul(force, timestep / particles[i].mass),
-				*newvel = mtxAdd(particles[i].velocity, dvdt);
+				*newvel = mtxAdd(particles[i].velocity, dvdt),
+				*dxdt = mtxScalarMul(newvel, timestep),
+				*newpos = mtxAdd(particles[i].pos, dxdt);
 			mtxFree(force);
 			mtxFree(dvdt);
+			mtxFree(dxdt);
 			mtxFree(particles[i].velocity);
+			mtxFree(particles[i].pos);
 			particles[i].velocity = newvel;
+			particles[i].pos = newpos;
 		}
 		time += timestep;
 	}
+	gettimeofday(&tv2, NULL);
+	timersub(&tv2, &tv1, &elapsed);
+	printf("Elapsed time: %u.%06u\n", elapsed.tv_sec, elapsed.tv_usec);
 	saveParticles(particles, pnum, "Finish.csv");
 	
-	for(int i = 0; i < pnum; i++)
+	for(int i = 0; i < pnum; i++) {
 		mtxFree(particles[i].pos);
+		mtxFree(particles[i].velocity);
+	}
 	free(particles);
 	return 0;
 }
@@ -70,12 +85,12 @@ struct particle *initParticles(int pnum)
 	for(int i = 0; i < pnum; i++) {
 		particles[i].pos = mtxCreate(1, 3);
 		particles[i].velocity = mtxCreate(1, 3);
-		mtxSet(particles[i].pos, 0, 0, ((mtxfp)rand() - 1) / RAND_MAX);
-		mtxSet(particles[i].pos, 0, 1, ((mtxfp)rand() - 1) / RAND_MAX);
-		mtxSet(particles[i].pos, 0, 2, ((mtxfp)rand() - 1) / RAND_MAX);
-		mtxSet(particles[i].velocity, 0, 0, ((mtxfp)rand() - 1) / RAND_MAX);
-		mtxSet(particles[i].velocity, 0, 1, ((mtxfp)rand() - 1) / RAND_MAX);
-		mtxSet(particles[i].velocity, 0, 2, ((mtxfp)rand() - 1) / RAND_MAX);
+		mtxSet(particles[i].pos, 0, 0, ((mtxfp)(rand() - 1)) / RAND_MAX);
+		mtxSet(particles[i].pos, 0, 1, ((mtxfp)(rand() - 1)) / RAND_MAX);
+		mtxSet(particles[i].pos, 0, 2, ((mtxfp)(rand() - 1)) / RAND_MAX);
+		mtxSet(particles[i].velocity, 0, 0, ((mtxfp)(rand() - 1)) / RAND_MAX);
+		mtxSet(particles[i].velocity, 0, 1, ((mtxfp)(rand() - 1)) / RAND_MAX);
+		mtxSet(particles[i].velocity, 0, 2, ((mtxfp)(rand() - 1)) / RAND_MAX);
     particles[i].mass = ((mtxfp)rand()) / RAND_MAX;
 	}
 	return particles;
@@ -84,8 +99,9 @@ struct particle *initParticles(int pnum)
 void saveParticles(struct particle *parts, int pnum, const char *fname)
 {
 	FILE *file = fopen(fname, "w");
+	fprintf(file, "index, mass, x, y, z, vx, vy, vz\n");
 	for(int i = 0; i < pnum; i++) {
-		fprintf(file, "%4d, %10.9f "
+		fprintf(file, "%4d, %10.9f, "
 						"%10.9f, %10.9f, %10.9f, "
 						"%10.9f, %10.9f, %10.9f\n",
 						i, parts[i].mass,

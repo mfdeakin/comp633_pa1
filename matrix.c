@@ -163,7 +163,7 @@ struct matrix *mtxAdd(struct matrix *lhs, struct matrix *rhs)
 	}
 	struct matrix *mtx = mtxCreate(lhs->width, lhs->height);
 	unsigned x = 0, y = 0;
-	for(unsigned i = 0; i < (lhs->width * lhs->height); i++) {
+	for(unsigned i = 0; i < (lhs->width * lhs->height); i++, x++) {
 		if(x == lhs->width) {
 			x = 0;
 			y++;
@@ -182,7 +182,7 @@ struct matrix *mtxSub(struct matrix *lhs, struct matrix *rhs)
 	}
 	struct matrix *mtx = mtxCreate(lhs->width, lhs->height);
 	unsigned x = 0, y = 0;
-	for(unsigned i = 0; i < (lhs->width * lhs->height); i++) {
+	for(unsigned i = 0; i < (lhs->width * lhs->height); i++, x++) {
 		if(x == lhs->width) {
 			x = 0;
 			y++;
