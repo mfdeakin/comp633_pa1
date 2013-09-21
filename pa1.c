@@ -16,7 +16,6 @@ struct particle {
 	double mass;
 	double pos[3];
 	double vel[3];
-	double force[3];
 };
 
 struct particle *initParticles(int pnum);
@@ -91,11 +90,12 @@ void slowersim(struct particle *particles, int pnum, int maxstep,
 							 double timestep, double gravity)
 {
 	double time = 0.0;
+	double force[3];
 	for(int s = 0; s < maxstep; s++) {
 		/* printf("Step %d\n", s); */
 		for(int i = 0; i < pnum; i++) {
 			for(int k = 0; k < 3; k++)
-				particles[i].force[k] = 0;
+				force[k] = 0;
 			for(int j = 0; j < pnum; j++) {
 				if(i == j)
 					continue;
@@ -103,12 +103,12 @@ void slowersim(struct particle *particles, int pnum, int maxstep,
 															particles[i].pos[1] - particles[j].pos[1],
 															particles[i].pos[2] - particles[j].pos[2]));
 				for(int k = 0; k < 3; k++)
-					particles[i].force[k] -= gravity *
+					force[k] -= gravity *
 						particles[i].mass * particles[j].mass *
 						(particles[i].pos[k] - particles[j].pos[k]) / r / r / r;
 			}
 			for(int k = 0; k < 3; k++) {
-				double dvdt = particles[i].force[k] / particles[i].mass;
+				double dvdt = force[k] / particles[i].mass;
 				particles[i].pos[k] += (particles[i].vel[k] + dvdt / 2) * timestep;
 				particles[i].vel[k] += dvdt * timestep;
 			}
@@ -121,10 +121,11 @@ void slowsim(struct particle *particles, int pnum, int maxstep,
 							 double timestep, double gravity)
 {
 	double time = 0.0;
+	double *force = malloc(sizeof(double[pnum * 3]));
 	for(int s = 0; s < maxstep; s++) {
 		for(int i = 0; i < pnum; i++)
 			for(int k = 0; k < 3; k++)
-				particles[i].force[k] = 0;
+				force[3 * i + k] = 0;
 		/* printf("Step %d\n", s); */
 		for(int i = 0; i < pnum; i++) {
 			for(int j = i + 1; j < pnum; j++) {
@@ -135,18 +136,19 @@ void slowsim(struct particle *particles, int pnum, int maxstep,
 					double tmp = gravity *
 						particles[i].mass * particles[j].mass *
 						(particles[i].pos[k] - particles[j].pos[k]) / r / r / r;
-					particles[i].force[k] -= tmp;
-					particles[j].force[k] += tmp;
+					force[3 * i + k] -= tmp;
+					force[3 * j + k] += tmp;
 				}
 			}
 			for(int k = 0; k < 3; k++) {
-				double dvdt = particles[i].force[k] / particles[i].mass;
+				double dvdt = force[3 * i + k] / particles[i].mass;
 				particles[i].pos[k] += (particles[i].vel[k] + dvdt / 2) * timestep;
 				particles[i].vel[k] += dvdt * timestep;
 			}
 		}
 		time += timestep;
 	}
+	free(force);
 }
 
 double calcMomentum(struct particle *parts, int pnum)
@@ -189,9 +191,6 @@ struct particle *initParticles(int pnum)
 		particles[i].vel[0] = ((double)rand() - 1) / RAND_MAX;
 		particles[i].vel[1] = ((double)rand() - 1) / RAND_MAX;
 		particles[i].vel[2] = ((double)rand() - 1) / RAND_MAX;
-		particles[i].force[0] = ((double)rand() - 1) / RAND_MAX;
-		particles[i].force[1] = ((double)rand() - 1) / RAND_MAX;
-		particles[i].force[2] = ((double)rand() - 1) / RAND_MAX;
 	}
 	return particles;
 }
