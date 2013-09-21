@@ -35,28 +35,12 @@ double magsq(double x, double y, double z)
 
 int runSim(int pnum, int maxstep, double timestep, double gravity)
 {
-	/* pnum = 2; */
-	/* gravity = 1; */
-	/* timestep = 0.001; */
-	printf("Running with pnum: %d, maxstep: %d, timestep: %f, gravity: %f\n",
-				 pnum, maxstep, timestep, gravity);
 	struct particle *particles = initParticles(pnum),
-		*copy = malloc(sizeof(struct particle[pnum]));
-	/* double pos[2][3] = {{0.458650, 0.755605, 0.0}, {0.679296, 0.678865, 0.0}}; */
-	/* double vel[2][3] = {{0.0, 0.0, 0.0}, {0.0, 0.0, 0.0}}; */
-	/* double mass[2] = {0.577852, 0.919489}; */
-	/* for(int i = 0; i < 2; i++) { */
-	/* 	particles[i].mass = mass[i]; */
-	/* 	for(int k = 0; k < 3; k++) { */
-	/* 		particles[i].pos[k] = pos[i][k]; */
-	/* 		particles[i].vel[k] = vel[i][k]; */
-	/* 	} */
-	/* } */
+		*copy = (struct particle *)malloc(sizeof(struct particle[pnum]));
 	memcpy(copy, particles, sizeof(struct particle[pnum]));
 
-	saveParticles(particles, pnum, "Startup.csv");
-	printf("Starting Momentum: %10.9lf\n"
-				 "Starting Energy: %10.9lf\n",
+	printf("%5d, %4d, %10.9f, %10.9f, %10.9lf, %10.9lf, ",
+				 pnum, maxstep, timestep, gravity,
 				 calcMomentum(particles, pnum),
 				 calcEnergy(particles, pnum, gravity));
 	struct timeval tv1;
@@ -65,24 +49,20 @@ int runSim(int pnum, int maxstep, double timestep, double gravity)
 	struct timeval tv2, elapsed;
 	gettimeofday(&tv2, NULL);
 	timersub(&tv2, &tv1, &elapsed);
-	printf("Finished Momentum: %10.9lf\n"
-				 "Finished Energy: %10.9lf\n",
+	printf(" %u.%06u, ", elapsed.tv_sec, elapsed.tv_usec);
+	printf("%10.9lf, %10.9lf, ",
 				 calcMomentum(particles, pnum),
 				 calcEnergy(particles, pnum, gravity));
-	printf("Elapsed time: %u.%06u\n", elapsed.tv_sec, elapsed.tv_usec);
-	saveParticles(particles, pnum, "Finish.csv");
 	free(particles);
 
 	particles = copy;
 	slowsim(particles, pnum, maxstep, timestep, gravity);
 	gettimeofday(&tv1, NULL);
 	timersub(&tv1, &tv2, &elapsed);
-	printf("Finished Momentum: %10.9lf\n"
-				 "Finished Energy: %10.9lf\n",
+	printf("%u.%06u, ", elapsed.tv_sec, elapsed.tv_usec);
+	printf("%10.9lf, %10.9lf\n",
 				 calcMomentum(particles, pnum),
 				 calcEnergy(particles, pnum, gravity));
-	printf("Elapsed time: %u.%06u\n", elapsed.tv_sec, elapsed.tv_usec);
-	saveParticles(particles, pnum, "Finish2.csv");
 	free(particles);
 	return 0;
 }
@@ -90,9 +70,7 @@ int runSim(int pnum, int maxstep, double timestep, double gravity)
 void slowersim(struct particle *particles, int pnum, int maxstep,
 							 double timestep, double gravity)
 {
-	double time = 0.0;
 	for(int s = 0; s < maxstep; s++) {
-		/* printf("Step %d\n", s); */
 		for(int i = 0; i < pnum; i++) {
 			for(int k = 0; k < 3; k++)
 				particles[i].force[k] = 0;
@@ -102,10 +80,11 @@ void slowersim(struct particle *particles, int pnum, int maxstep,
 				double r = sqrt(magsq(particles[i].pos[0] - particles[j].pos[0],
 															particles[i].pos[1] - particles[j].pos[1],
 															particles[i].pos[2] - particles[j].pos[2]));
+				r = r * r * r;
 				for(int k = 0; k < 3; k++)
 					particles[i].force[k] -= gravity *
 						particles[i].mass * particles[j].mass *
-						(particles[i].pos[k] - particles[j].pos[k]) / r / r / r;
+						(particles[i].pos[k] - particles[j].pos[k]) / r;
 			}
 			for(int k = 0; k < 3; k++) {
 				double dvdt = particles[i].force[k] / particles[i].mass;
@@ -113,28 +92,28 @@ void slowersim(struct particle *particles, int pnum, int maxstep,
 				particles[i].vel[k] += dvdt * timestep;
 			}
 		}
-		time += timestep;
 	}
 }
 
 void slowsim(struct particle *particles, int pnum, int maxstep,
 							 double timestep, double gravity)
 {
-	double time = 0.0;
 	for(int s = 0; s < maxstep; s++) {
-		for(int i = 0; i < pnum; i++)
+		/* printf("Step %d\n", s); */
+		for(int i = 0; i < pnum; i++) {
 			for(int k = 0; k < 3; k++)
 				particles[i].force[k] = 0;
-		/* printf("Step %d\n", s); */
+		}
 		for(int i = 0; i < pnum; i++) {
 			for(int j = i + 1; j < pnum; j++) {
 				double r = sqrt(magsq(particles[i].pos[0] - particles[j].pos[0],
 															particles[i].pos[1] - particles[j].pos[1],
 															particles[i].pos[2] - particles[j].pos[2]));
+				r = r * r * r;
 				for(int k = 0; k < 3; k++) {
 					double tmp = gravity *
 						particles[i].mass * particles[j].mass *
-						(particles[i].pos[k] - particles[j].pos[k]) / r / r / r;
+						(particles[i].pos[k] - particles[j].pos[k]) / r;
 					particles[i].force[k] -= tmp;
 					particles[j].force[k] += tmp;
 				}
@@ -145,7 +124,6 @@ void slowsim(struct particle *particles, int pnum, int maxstep,
 				particles[i].vel[k] += dvdt * timestep;
 			}
 		}
-		time += timestep;
 	}
 }
 
@@ -179,7 +157,8 @@ double calcEnergy(struct particle *parts, int pnum, double gravity)
 
 struct particle *initParticles(int pnum)
 {
-	struct particle *particles = malloc(sizeof(struct particle[pnum]));
+	struct particle *particles = (struct particle *)
+		malloc(sizeof(struct particle[pnum]));
 	assert(particles);
 	for(int i = 0; i < pnum; i++) {
     particles[i].mass = ((double)rand()) / RAND_MAX;
@@ -202,7 +181,8 @@ struct particle *loadParticles(char *fname)
 	int pnum = 0;
 	fscanf(file, "%d", &pnum);
 	fseek(file, SEEK_CUR, sizeof(FILEHEADER));
-	struct particle *particles = malloc(sizeof(struct particle[pnum]));
+	struct particle *particles = (struct particle *)
+		malloc(sizeof(struct particle[pnum]));
 	assert(particles);
 	for(int i = 0; i < pnum; i++) {
 		int tmp;
