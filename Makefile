@@ -3,10 +3,10 @@ CC=gcc
 CFLAGS = -std=gnu99
 LIBS = -lm
 
-debug: CFLAGS += -DMTXDEBUG -g -Wall -pg
+debug: CFLAGS += -DMTXDEBUG -Wall
 debug: pa1
 
-release: CFLAGS += -O3 -floop-interchange -floop-strip-mine -floop-block
+release: CFLAGS += -O3 -floop-strip-mine -floop-block -floop-interchange -msse -msse3 -mmmx
 release: pa1
 
 pa1: pa1.o matrix.o

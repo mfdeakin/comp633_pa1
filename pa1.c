@@ -14,8 +14,8 @@
 
 struct particle {
 	double mass;
-	double pos[3];
-	double vel[3];
+	double pos[2];
+	double vel[2];
 };
 
 struct particle *initParticles(int pnum);
@@ -27,9 +27,9 @@ void slowsim(struct particle *particles, int pnum, int maxstep,
 double calcMomentum(struct particle *particles, int pnum);
 double calcEnergy(struct particle *particles, int pnum, double gravity);
 
-double magsq(double x, double y, double z)
+double magsq(double x, double y)
 {
-	return x * x + y * y + z * z;
+	return x * x + y * y;
 }
 
 int runSim(int pnum, int maxstep, double timestep, double gravity)
@@ -69,28 +69,26 @@ int runSim(int pnum, int maxstep, double timestep, double gravity)
 void slowersim(struct particle *particles, int pnum, int maxstep,
 							 double timestep, double gravity)
 {
-	double force[3];
+	register double fx, fy;
 	for(int s = 0; s < maxstep; s++) {
 		for(int i = 0; i < pnum; i++) {
-			for(int k = 0; k < 3; k++)
-				force[k] = 0;
+			fx = fy = 0.0;
+			register double x = particles[i].pos[0],
+				y = particles[i].pos[1];
 			for(int j = 0; j < pnum; j++) {
 				if(i == j)
 					continue;
-				double r = sqrt(magsq(particles[i].pos[0] - particles[j].pos[0],
-															particles[i].pos[1] - particles[j].pos[1],
-															particles[i].pos[2] - particles[j].pos[2]));
-				r = r * r * r;
-				for(int k = 0; k < 3; k++)
-					force[k] -= gravity *
-						particles[i].mass * particles[j].mass *
-						(particles[i].pos[k] - particles[j].pos[k]) / r;
+				double r = sqrt(x * x + y * y);
+				register double c = gravity * particles[j].mass / (r * r * r);
+				fx -= c * (x - particles[j].pos[0]);
+				fy -= c * (y - particles[j].pos[1]);
 			}
-			for(int k = 0; k < 3; k++) {
-				double dvdt = force[k] / particles[i].mass;
-				particles[i].pos[k] += (particles[i].vel[k] + dvdt / 2) * timestep;
-				particles[i].vel[k] += dvdt * timestep;
-			}
+			particles[i].vel[0] += fx * timestep;
+			particles[i].vel[1] += fy * timestep;
+		}
+		for(int i = 0; i < pnum; i++) {
+			particles[i].pos[0] += particles[i].vel[0] * timestep;
+			particles[i].pos[1] += particles[i].vel[1] * timestep;
 		}
 	}
 }
@@ -98,28 +96,26 @@ void slowersim(struct particle *particles, int pnum, int maxstep,
 void slowsim(struct particle *particles, int pnum, int maxstep,
 							 double timestep, double gravity)
 {
-	double *force = malloc(sizeof(double[pnum * 3]));
+	double *force = malloc(sizeof(double[pnum * 2]));
 	for(int s = 0; s < maxstep; s++) {
 		for(int i = 0; i < pnum; i++) {
-			for(int k = 0; k < 3; k++)
-				force[3 * i + k] = 0;
+			for(int k = 0; k < 2; k++)
+				force[2 * i + k] = 0;
 		}
 		for(int i = 0; i < pnum; i++) {
 			for(int j = i + 1; j < pnum; j++) {
 				double r = sqrt(magsq(particles[i].pos[0] - particles[j].pos[0],
-															particles[i].pos[1] - particles[j].pos[1],
-															particles[i].pos[2] - particles[j].pos[2]));
-				r = r * r * r;
-				for(int k = 0; k < 3; k++) {
-					double tmp = gravity *
-						particles[i].mass * particles[j].mass *
-						(particles[i].pos[k] - particles[j].pos[k]) / r;
-					force[3 * i + k] -= tmp;
-					force[3 * j + k] += tmp;
+															particles[i].pos[1] - particles[j].pos[1]));
+				double c = gravity / (r * r * r),
+					a1 = c * particles[j].mass,
+					a2 = c * particles[i].mass;
+				for(int k = 0; k < 2; k++) {
+					force[2 * i + k] -= a1 * (particles[i].pos[k] - particles[j].pos[k]);
+					force[2 * j + k] += a2 * (particles[i].pos[k] - particles[j].pos[k]);
 				}
 			}
-			for(int k = 0; k < 3; k++) {
-				double dvdt = force[3 * i + k] / particles[i].mass;
+			for(int k = 0; k < 2; k++) {
+				double dvdt = force[2 * i + k];
 				particles[i].pos[k] += (particles[i].vel[k] + dvdt / 2) * timestep;
 				particles[i].vel[k] += dvdt * timestep;
 			}
@@ -132,8 +128,8 @@ double calcMomentum(struct particle *parts, int pnum)
 {
 	double momentum = 0.0;
 	for(int i = 0; i < pnum; i++)
-		momentum += sqrt(magsq(parts[i].vel[0], parts[i].vel[1],
-													 parts[i].vel[2])) * parts[i].mass;
+		momentum += sqrt(magsq(parts[i].vel[0], parts[i].vel[1])) *
+			parts[i].mass;
 	return momentum;
 }
 
@@ -141,15 +137,13 @@ double calcEnergy(struct particle *parts, int pnum, double gravity)
 {
 	double energy = 0;
 	for(int i = 0; i < pnum; i++) {
-		energy += magsq(parts[i].vel[0], parts[i].vel[1], parts[i].vel[2]) *
+		energy += magsq(parts[i].vel[0], parts[i].vel[1]) *
 			parts[i].mass / 2;
 		for(int j = i + 1; j < pnum; j++) {
 			double tmpmass = parts[i].mass * parts[j].mass,
 				tmpdist = sqrt(magsq(parts[i].pos[0] - parts[j].pos[0],
-														 parts[i].pos[1] - parts[j].pos[1],
-														 parts[i].pos[2] - parts[j].pos[2])),
-				tmperg = -gravity * tmpmass / tmpdist;
-			energy += tmperg;
+														 parts[i].pos[1] - parts[j].pos[1]));
+			energy += -gravity * tmpmass / tmpdist;
 		}
 	}
 	return energy;
@@ -164,10 +158,8 @@ struct particle *initParticles(int pnum)
     particles[i].mass = ((double)rand()) / RAND_MAX;
 		particles[i].pos[0] = ((double)rand() - 1) / RAND_MAX;
 		particles[i].pos[1] = ((double)rand() - 1) / RAND_MAX;
-		particles[i].pos[2] = ((double)rand() - 1) / RAND_MAX;
 		particles[i].vel[0] = ((double)rand() - 1) / RAND_MAX;
 		particles[i].vel[1] = ((double)rand() - 1) / RAND_MAX;
-		particles[i].vel[2] = ((double)rand() - 1) / RAND_MAX;
 	}
 	return particles;
 }
@@ -184,11 +176,11 @@ struct particle *loadParticles(char *fname)
 	for(int i = 0; i < pnum; i++) {
 		int tmp;
 		fscanf(file, "%4d, %10lf, "
-					 "%10lf, %10lf, %10lf, "
-					 "%10lf, %10lf, %10lf\n",
+					 "%10lf, %10lf, "
+					 "%10lf, %10lf\n",
 					 &tmp, &particles[i].mass,
-					 &particles[i].pos[0], &particles[i].pos[1], &particles[i].pos[2],
-					 &particles[i].vel[0], &particles[i].vel[1], &particles[i].vel[2]);
+					 &particles[i].pos[0], &particles[i].pos[1],
+					 &particles[i].vel[0], &particles[i].vel[1]);
 	}
 	return particles;
 }
@@ -200,11 +192,11 @@ void saveParticles(struct particle *parts, int pnum, const char *fname)
 	fprintf(file, FILEHEADER);
 	for(int i = 0; i < pnum; i++) {
 		fprintf(file, "%4d, %10.9f, "
-						"%10.9f, %10.9f, %10.9f, "
-						"%10.9f, %10.9f, %10.9f\n",
+						"%10.9f, %10.9f, "
+						"%10.9f, %10.9f\n",
 						i, parts[i].mass,
-						parts[i].pos[0], parts[i].pos[1], parts[i].pos[2],
-						parts[i].vel[0], parts[i].vel[1], parts[i].vel[2]);
+						parts[i].pos[0], parts[i].pos[1],
+						parts[i].vel[0], parts[i].vel[1]);
 	}
 	fclose(file);
 }
