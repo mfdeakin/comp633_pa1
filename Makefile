@@ -1,9 +1,9 @@
 
 CC=gcc
 CFLAGS = -std=gnu99
-LIBS = -lm
+LIBS = -lm -lsqlite3
 
-debug: CFLAGS += -DMTXDEBUG -Wall
+debug: CFLAGS += -DMTXDEBUG -Wall -g
 debug: pa1
 
 release: CFLAGS += -O3 -floop-strip-mine -floop-block -floop-interchange -msse -msse3 -mmmx
