@@ -1,7 +1,7 @@
 
 CC=gcc
-CFLAGS = -std=gnu99
-LIBS = -lm -lsqlite3
+CFLAGS = -std=gnu99 -fopenmp
+LIBS = -lm -lsqlite3 -lgomp
 
 debug: CFLAGS += -DMTXDEBUG -Wall -g
 debug: pa1

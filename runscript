@@ -1,0 +1,16 @@
+#!/usr/bin/python
+
+import subprocess, sys
+
+header = "Particles, Threads, Starting Momentum, Starting Energy, Slower Sim Time, Slower Sim Momentum, Slower Sim Energy, Slow Sim Time, Slow Sim Momentum, Slow Sim Energy"
+
+print(header)
+sys.stdout.flush()
+
+prange = [1, 2, 4, 8, 10, 12, 14, 15, 16]
+nrange = [100, 200, 500, 1000, 2000, 5000, 10000]
+
+for n in nrange:
+    for p in prange:
+        for k in range(5):
+            subprocess.call(["./pa1", "-c", str(n), "-p", str(p), "-g0.001"])
