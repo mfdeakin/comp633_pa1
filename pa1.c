@@ -105,6 +105,7 @@ void slowsim(struct particle *particles, int pnum, int maxstep,
 		}
 		#pragma omp parallel for
 		for(int i = 0; i < pnum; i += 1) {
+			/* #pragma omp parallel for */
 			for(int j = i + 1; j < pnum; j++) {
 				register double dispx1 = particles[i].pos[0] - particles[j].pos[0],
 					dispy1 = particles[i].pos[1] - particles[j].pos[1];
@@ -145,6 +146,7 @@ void slowersim(struct particle *particles, int pnum, int maxstep,
 			acc[2 * i + 1] = 0.0;
 			register double x = particles[i].pos[0],
 				y = particles[i].pos[1];
+			/* #pragma omp parallel for */
 			for(int j = 0; j < pnum; j++) {
 				if(i == j)
 					continue;
@@ -204,6 +206,7 @@ struct particle *initParticles(int pnum)
 	struct particle *particles = (struct particle *)
 		malloc(sizeof(struct particle[pnum]));
 	assert(particles);
+	#pragma omp parallel for
 	for(int i = 0; i < pnum; i++) {
     particles[i].mass = ((double)rand()) / RAND_MAX;
 		particles[i].pos[0] = ((double)rand() - 1) / RAND_MAX;
